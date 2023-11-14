@@ -13,7 +13,7 @@ from colors_text import TextColor as bcolors
 
 class ParseData:
     """get the data"""
-    info_msg = '\tMessage from ParseData:\n'
+    info_msg = 'Message from ParseData:\n'
 
     def __init__(self,
                  fname: str,
