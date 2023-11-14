@@ -61,11 +61,13 @@ class Itp:
         dihedrals: bool = False  # Flag of 'dihedrals' occurrence
         impropers: bool = False  # Flag of 'impropers' occurrence
         moleculetype: bool = False  # Flag of 'moleculetype' occurrence
+        atomtypes: bool = False  # Flag of 'moleculetype' occurrence
         atoms_info: list[str] = []  # to append atoms lines
         bonds_info: list[str] = []  # to append bonds lines
         angles_info: list[str] = []  # to append angles lines
         dihedrals_info: list[str] = []  # to append dihedrals lines
         moleculetype_info: list[str] = []  # to append dihedrals lines
+        atomtypes_info: list[str] = []  # to append atomtypes lines
         with open(fname, 'r', encoding='utf8') as f_r:
             while True:
                 line: str = f_r.readline()
@@ -75,27 +77,38 @@ class Itp:
                         wilds = line.strip().split()
                         if wilds[1] == 'atoms':
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = True, False, False, False,\
+                                moleculetype, atomtypes = \
+                                True, False, False, False, False, \
                                 False, False
                         elif wilds[1] == 'bonds':
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = False, True, False, False,\
+                                moleculetype, atomtypes = \
+                                False, True, False, False, False, \
                                 False, False
                         elif wilds[1] == 'angles':
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = False, False, True, False,\
+                                moleculetype, atomtypes = \
+                                False, False, True, False, False, \
                                 False, False
                         elif wilds[1] == 'dihedrals':
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = False, False, False, True,\
+                                moleculetype, atomtypes = \
+                                False, False, False, True, False, \
                                 False, False
                         elif wilds[1] == 'moleculetype':
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = False, False, False, False,\
+                                moleculetype, atomtypes = \
+                                False, False, False, False, False, \
+                                True, False
+                        elif wilds[1] == 'atomtypes':
+                            atoms, bonds, angles, dihedrals, impropers,\
+                                moleculetype, atomtypes = \
+                                False, False, False, False, False, \
                                 False, True
                         else:
                             atoms, bonds, angles, dihedrals, impropers,\
-                                moleculetype = False, False, False, False,\
+                                moleculetype, atomtypes = \
+                                False, False, False, False, False, \
                                 False, False
                     else:
                         if moleculetype:
@@ -114,6 +127,8 @@ class Itp:
                                 dihedrals = False
                         if dihedrals and not impropers:
                             dihedrals_info.append(line)
+                        if atomtypes:
+                            atomtypes_info.append(line)
                 if not line:
                     break
         atom = AtomsInfo(atoms_info)
@@ -121,11 +136,50 @@ class Itp:
         bond = BondsInfo(atoms=atom.df, bonds=bonds_info)
         angle = AnglesInfo(atoms=atom.df, angles=angles_info)
         dihedral = DihedralsInfo(atoms=atom.df, dihedrals=dihedrals_info)
+        atomtype = AtomsTypes(atomtypes_info)
         self.atoms = atom.df
         self.bonds = bond.df
         self.angles = angle.df
         self.dihedrals = dihedral.df
         self.molecules = molecules.df
+        self.atomtype = atomtype.df
+
+
+class AtomsTypes:
+    """Get the atomtypes info at the top of the charmm itp files"""
+
+    def __init__(self,
+                 atomtypes: list[str]
+                 ) -> None:
+        self.df: pd.DataFrame = self.get_atoms_types(atomtypes)
+
+    def get_atoms_types(self,
+                        atomtypes: list[str]
+                        ) -> pd.DataFrame:
+        """parse the lines"""
+        sparsed_lines: list[dict[str, typing.Any]] = []
+        for line in atomtypes:
+            if line.startswith(';'):
+                pass
+            else:
+                sparsed_lines.append(self._process_line(line))
+        return pd.DataFrame(sparsed_lines)
+
+    def _process_line(self,
+                      line: str
+                      ) -> dict[str, typing.Any]:
+        """sparse lines"""
+        tmp: list[str] = line.split(' ')
+        tmp = [item for item in tmp if item]
+        return {
+            'name': tmp[0],
+            'atom_nr': int(tmp[1]),
+            'mass': float(tmp[2]),
+            'charge': float(tmp[3]),
+            'ptype': tmp[4],
+            'sigma': float(tmp[5]),
+            'epsilon': float(tmp[6]),
+        }
 
 
 class MoleculeInfo:
