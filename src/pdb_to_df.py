@@ -83,7 +83,7 @@ class Pdb:
                  log: logger.logging.Logger
                  ) -> None:
         self.info_msg += f"\tReading '{fname}' ...\n"
-        self.get_data(fname)
+        self.pdb_df: pd.DataFrame = self.get_data(fname)
         self.__write_msg(log)
         self.info_msg = ''  # Empety the msg
 
@@ -94,9 +94,7 @@ class Pdb:
         # Read PDB file and return a list of list
         data = self.read_pdb(fname)
         # Convert the list to DataFrame
-        df_i = self.mk_df(data)
-        # Check the residue number order
-        self.atoms = self.check_residue_number(df_i)
+        return self.mk_df(data)
 
     def read_pdb(self,
                  fname: str  # PDB file name
@@ -108,8 +106,10 @@ class Pdb:
                 line = f_i.readline()
                 if line.strip().startswith("ATOM"):
                     data_list.append(self.__process_atom(line))
-                if line.strip().startswith("HETATM"):
+                elif line.strip().startswith("HETATM"):
                     data_list.append(self.__process_hetatm(line))
+                else:
+                    pass
                 if not line:
                     break
         return data_list
@@ -119,8 +119,7 @@ class Pdb:
         """Process the line on based on the PDB file, started with ATOM"""
         # first check the length of the line MUST be equal to 79
         if len(line) != 79:
-            # exit(f"ERROR! wrong line length: {len(line)} != 79")
-            pass
+            exit(f"ERROR! wrong line length: {len(line)} != 79")
         records: str = line[0:6].strip()
         atom_id: int = int(line[6:11].strip())
         atom_name: str = line[12:16].strip()
@@ -222,4 +221,4 @@ class Pdb:
 
 
 if __name__ == '__main__':
-    pdb = Pdb(sys.argv[1], log=logger.setup_logger('update.log'))
+    pdb = Pdb(sys.argv[1], log=logger.setup_logger('pdb2df.log'))
