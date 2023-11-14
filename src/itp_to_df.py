@@ -142,7 +142,7 @@ class Itp:
         self.angles = angle.df
         self.dihedrals = dihedral.df
         self.molecules = molecules.df
-        self.atomtype = atomtype.df
+        self.atomtypes = atomtype.df
 
 
 class AtomsTypes:
