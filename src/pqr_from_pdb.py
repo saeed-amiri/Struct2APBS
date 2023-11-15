@@ -71,9 +71,7 @@ class PdbToPqr:
         """
         itp_df: pd.DataFrame = itp[itp['resname'] == 'COR'].copy()
         cor_df: pd.DataFrame = pdb[pdb['residue_name'] == 'COR'].copy()
-        if cor_df['atom_name'].equals(itp_df['atomname']):
-            pass
-        else:
+        if not cor_df['atom_name'].equals(itp_df['atomname']):
             sys.exit("The columns name are different!\n")
         cor_charges: pd.DataFrame = itp[['atomnr', 'charge']].copy()
         cor_charges['atomnr'] = cor_charges['atomnr'].astype(str)
