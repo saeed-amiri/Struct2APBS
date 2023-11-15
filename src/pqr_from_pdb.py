@@ -36,8 +36,6 @@ class PdbToPqr:
                     itp: pd.DataFrame
                     ) -> None:
         """get charges of the atoms in the pdb file"""
-        atoms: list[str] = pdb['atom_name']
-        charges: dict[str, float] = {}
         aptes_with_charges: pd.DataFrame = self.set_aptes_charges(pdb, itp)
         cores_with_charges: pd.DataFrame = self.set_cores_charges(pdb, itp)
 
