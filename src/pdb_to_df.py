@@ -89,7 +89,7 @@ class Pdb:
 
     def get_data(self,
                  fname: str  # PDB file name
-                 ) -> None:
+                 ) -> pd.DataFrame:
         """Read and get the atomic strcuture in lammps`"""
         # Read PDB file and return a list of list
         data = self.read_pdb(fname)
