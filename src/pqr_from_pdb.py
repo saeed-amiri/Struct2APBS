@@ -39,8 +39,7 @@ class PdbToPqr:
         atoms: list[str] = pdb['atom_name']
         charges: dict[str, float] = {}
         aptes_with_charges: pd.DataFrame = self.set_aptes_charges(pdb, itp)
-        for item in atoms:
-            charges[item] = itp[itp['atomname'] == item]['charge'].values
+        cores_with_charges: pd.DataFrame = self.set_cores_charges(pdb, itp)
 
     def set_aptes_charges(self,
                           pdb: pd.DataFrame,
@@ -61,6 +60,30 @@ class PdbToPqr:
                 dfs_with_charges.append(self.add_charge_column_to_df(
                     group, unpro_charges))
         return pd.concat(dfs_with_charges, axis=0, ignore_index=True)
+
+    def set_cores_charges(self,
+                          pdb: pd.DataFrame,
+                          itp: pd.DataFrame
+                          ) -> pd.DataFrame:
+        """set the charges for the core atoms of the nano particles
+        since only the charges on the shell is important, only those
+        are checked
+        """
+        itp_df: pd.DataFrame = itp[itp['resname'] == 'COR'].copy()
+        cor_df: pd.DataFrame = pdb[pdb['residue_name'] == 'COR'].copy()
+        if cor_df['atom_name'].equals(itp_df['atomname']):
+            pass
+        else:
+            sys.exit("The columns name are different!\n")
+        cor_charges: pd.DataFrame = itp[['atomnr', 'charge']].copy()
+        cor_charges['atomnr'] = cor_charges['atomnr'].astype(str)
+        cor_df['atom_id'] = cor_df['atom_id'].astype(str)
+        cor_df = pd.merge(cor_df,
+                          cor_charges[['atomnr', 'charge']],
+                          left_on='atom_id',
+                          right_on='atomnr',
+                          how='left')
+        return cor_df.drop('atomnr', axis=1)
 
     @staticmethod
     def add_charge_column_to_df(main_df: pd.DataFrame,
