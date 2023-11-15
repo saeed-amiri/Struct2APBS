@@ -29,7 +29,7 @@ class PdbToPqr:
         pdb: pd.DataFrame = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
         charmm: pd.DataFrame = \
             parse_charmm_data.ParseData('CHARMM.DAT', log).radius_df
-        self.get_charges(pdb, itp)
+        pdb_with_charges: pd.DataFrame = self.get_charges(pdb, itp)
 
     def get_charges(self,
                     pdb: pd.DataFrame,
@@ -38,6 +38,9 @@ class PdbToPqr:
         """get charges of the atoms in the pdb file"""
         aptes_with_charges: pd.DataFrame = self.set_aptes_charges(pdb, itp)
         cores_with_charges: pd.DataFrame = self.set_cores_charges(pdb, itp)
+        return pd.concat(
+            [cores_with_charges ,aptes_with_charges], axis=1, ignore_index=True
+            )
 
     def set_aptes_charges(self,
                           pdb: pd.DataFrame,
