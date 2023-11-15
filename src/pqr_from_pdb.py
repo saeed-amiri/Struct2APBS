@@ -25,9 +25,10 @@ class PdbToPqr:
                  log: logger.logging.Logger
                  ) -> None:
         """get all the infos"""
-        itp = itp_to_df.Itp('APT_COR.itp').atoms
-        pdb = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
-        charmm = parse_charmm_data.ParseData('CHARMM.DAT', log).radius_df
+        itp: pd.DataFrame = itp_to_df.Itp('APT_COR.itp').atoms
+        pdb: pd.DataFrame = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
+        charmm: pd.DataFrame = \
+            parse_charmm_data.ParseData('CHARMM.DAT', log).radius_df
         self.get_charges(pdb, itp)
 
     def get_charges(self,
@@ -37,31 +38,46 @@ class PdbToPqr:
         """get charges of the atoms in the pdb file"""
         atoms: list[str] = pdb['atom_name']
         charges: dict[str, float] = {}
-        self.set_aptes_charges(pdb, itp)
+        aptes_with_charges: pd.DataFrame = self.set_aptes_charges(pdb, itp)
         for item in atoms:
             charges[item] = itp[itp['atomname'] == item]['charge'].values
 
     def set_aptes_charges(self,
                           pdb: pd.DataFrame,
                           itp: pd.DataFrame
-                          ) -> None:
+                          ) -> pd.DataFrame:
         """get charges for different aptes longs"""
         itp_df: pd.DataFrame = itp[itp['resname'] == 'APT']
         apt_df: pd.DataFrame = pdb[pdb['residue_name'] == 'APT']
         pro_charges: pd.DataFrame
         unpro_charges: pd.DataFrame
-        pro_charges, unpro_charges = self.get_aptes_q(itp_df)
-        dfs_by_residue: dict[int, pd.DataFrame] = {}
-        for residue_number, group in apt_df.groupby('residue_number'):
+        pro_charges, unpro_charges = self.get_aptes_charges(itp_df)
+        dfs_with_charges: list[pd.DataFrame] = []
+        for _, group in apt_df.groupby('residue_number'):
             if len(group) == 13:
-                print("IT'S PROTONATED")
+                dfs_with_charges.append(self.add_charge_column_to_df(
+                    group, pro_charges))
             elif len(group) == 12:
-                print("IT'S UNPROTONATED")
-            dfs_by_residue[residue_number] = group
+                dfs_with_charges.append(self.add_charge_column_to_df(
+                    group, unpro_charges))
+        return pd.concat(dfs_with_charges, axis=0, ignore_index=True)
 
     @staticmethod
-    def get_aptes_q(itp_df: pd.DataFrame
-                    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def add_charge_column_to_df(main_df: pd.DataFrame,
+                                charge_df: pd.DataFrame
+                                ) -> pd.DataFrame:
+        """add charge column to the dataframe"""
+        tmp_df = main_df.copy()
+        tmp_df = pd.merge(tmp_df,
+                          charge_df[['atomname', 'charge']],
+                          left_on='atom_name',
+                          right_on='atomname',
+                          how='left')
+        return tmp_df.drop('atomname', axis=1)
+
+    @staticmethod
+    def get_aptes_charges(itp_df: pd.DataFrame
+                          ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """return charges for pro- and unprotonated aptes"""
         pro_found: bool = False
         unpro_found: bool = False
