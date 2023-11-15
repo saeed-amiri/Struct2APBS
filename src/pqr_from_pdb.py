@@ -23,7 +23,7 @@ class PdbToPqr:
 
     def initiate(self,
                  log: logger.logging.Logger
-                 ) -> None:
+                 ) -> pd.DataFrame:
         """get all the infos"""
         itp: pd.DataFrame = itp_to_df.Itp('APT_COR.itp').atoms
         pdb: pd.DataFrame = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
@@ -32,7 +32,9 @@ class PdbToPqr:
         pdb_with_charges: pd.DataFrame = self.get_charges(pdb, itp)
         pdb_with_charge_radii: pd.DataFrame = \
             self.set_radii(pdb_with_charges, charmm, itp)
-        print(pdb_with_charge_radii)
+        pdb_df: pd.DataFrame = self.add_chain_identifier(pdb_with_charge_radii)
+        pqr_df: pd.DataFrame = self.mk_pqr_df(pdb_df)
+        self.write_pqr(pqr_df)
 
     def get_charges(self,
                     pdb: pd.DataFrame,
@@ -55,7 +57,55 @@ class PdbToPqr:
             self.set_radii_for_aptes(pdb_with_charges, charmm)
         cores_df: pd.DataFrame = \
             self.set_radii_for_cores(pdb_with_charges, charmm, itp)
-        return pd.concat([aptes_df, cores_df], axis=0, ignore_index=True)
+        return pd.concat([cores_df, aptes_df], axis=0, ignore_index=True)
+
+    @staticmethod
+    def add_chain_identifier(pdb_df: pd.DataFrame
+                             ) -> pd.DataFrame:
+        """add the column"""
+        chain_identifier_map = {
+            'COR': 'A',
+            'APT': 'B'
+        }
+        pdb_df['chain_id'] = \
+            pdb_df['residue_name'].map(chain_identifier_map)
+        return pdb_df
+
+    @staticmethod
+    def mk_pqr_df(pdb_with_charge_radii: pd.DataFrame
+                  ) -> pd.DataFrame:
+        """prepare df in the format of the pqr file"""
+        columns: list[str] = ['records',
+                              'atom_id',
+                              'atom_name',
+                              'residue_name',
+                              'chain_id',
+                              'residue_number',
+                              'x', 'y', 'z', 'charge', 'radius']
+        float_columns: list[str] = ['x', 'y', 'z', 'charge', 'radius']
+        df_i: pd.DataFrame = pdb_with_charge_radii[columns].copy()
+        df_i[float_columns] = df_i[float_columns].astype(float)
+        return df_i
+
+    @staticmethod
+    def write_pqr(pqr_df: pd.DataFrame
+                  ) -> None:
+        """writing the pqr to a file"""
+        with open('APT_COR.pqr', 'w', encoding='utf8') as f_w:
+            for _, row in pqr_df.iterrows():
+                line = f"ATOM  {row['atom_id']:>5} " \
+                       f"{row['atom_name']:<4} " \
+                       f"{row['residue_name']:<3} " \
+                       f"{row['chain_id']:>1} " \
+                       f"{row['residue_number']:>5} " \
+                       f"{row['x']:>8.3f}" \
+                       f"{row['y']:>8.3f}" \
+                       f"{row['z']:>8.3f} " \
+                       f"{row['charge']:>7.4f} " \
+                       f"{row['radius']:>6.4f}\n"
+                f_w.write(line)
+            f_w.write('TER\n')
+            f_w.write('END\n')
 
     @staticmethod
     def set_radii_for_aptes(pdb_with_charges: pd.DataFrame,
