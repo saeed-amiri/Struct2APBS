@@ -30,17 +30,65 @@ class PdbToPqr:
         charmm: pd.DataFrame = \
             parse_charmm_data.ParseData('CHARMM.DAT', log).radius_df
         pdb_with_charges: pd.DataFrame = self.get_charges(pdb, itp)
+        pdb_with_charge_radii: pd.DataFrame = \
+            self.set_radii(pdb_with_charges, charmm, itp)
+        print(pdb_with_charge_radii)
 
     def get_charges(self,
                     pdb: pd.DataFrame,
                     itp: pd.DataFrame
-                    ) -> None:
+                    ) -> pd.DataFrame:
         """get charges of the atoms in the pdb file"""
         aptes_with_charges: pd.DataFrame = self.set_aptes_charges(pdb, itp)
         cores_with_charges: pd.DataFrame = self.set_cores_charges(pdb, itp)
         return pd.concat(
-            [cores_with_charges ,aptes_with_charges], axis=1, ignore_index=True
+            [cores_with_charges, aptes_with_charges], axis=0, ignore_index=True
             )
+
+    def set_radii(self,
+                  pdb_with_charges: pd.DataFrame,
+                  charmm: pd.DataFrame,
+                  itp: pd.DataFrame
+                  ) -> pd.DataFrame:
+        """set the radii for all"""
+        aptes_df: pd.DataFrame = \
+            self.set_radii_for_aptes(pdb_with_charges, charmm)
+        cores_df: pd.DataFrame = \
+            self.set_radii_for_cores(pdb_with_charges, charmm, itp)
+        return pd.concat([aptes_df, cores_df], axis=0, ignore_index=True)
+
+    @staticmethod
+    def set_radii_for_aptes(pdb_with_charges: pd.DataFrame,
+                            charmm: pd.DataFrame
+                            ) -> pd.DataFrame:
+        """get the radius from the file"""
+        aptes_radii: pd.DataFrame = charmm[charmm['resname'] == 'APT'].copy()
+        aptes_df = pd.DataFrame = \
+            pdb_with_charges[pdb_with_charges['residue_name'] == 'APT'].copy()
+        aptes_df = pd.merge(aptes_df,
+                            aptes_radii[['atom_name', 'radius']],
+                            on='atom_name',
+                            how='left')
+        return aptes_df
+
+    @staticmethod
+    def set_radii_for_cores(pdb_with_charges: pd.DataFrame,
+                            charmm: pd.DataFrame,
+                            itp: pd.DataFrame
+                            ) -> pd.DataFrame:
+        """get the radius from the file"""
+        cores_radii: pd.DataFrame = charmm[charmm['resname'] == 'COR'].copy()
+        cores_df = pd.DataFrame = \
+            pdb_with_charges[pdb_with_charges['residue_name'] == 'COR'].copy()
+        cores_df['atomtype'] = itp[itp['resname'] == 'COR']['atomtype'].copy()
+        cores_df = pd.merge(cores_df,
+                            cores_radii[['atom_name', 'radius']],
+                            left_on='atomtype',
+                            right_on='atom_name',
+                            how='left')
+        cores_df['atom_name'] = cores_df['atom_name_x'].copy()
+        return cores_df.drop(
+            ['atomtype', 'atom_name_x', 'atom_name_y'], axis=1)
 
     def set_aptes_charges(self,
                           pdb: pd.DataFrame,
