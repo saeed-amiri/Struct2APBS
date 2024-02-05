@@ -13,7 +13,7 @@ import parse_charmm_data
 
 class PdbToPqr:
     """
-    preapre the file with positions and charges and radii
+    preapre the file with positions, charges and radii
     """
 
     def __init__(self,
