@@ -1,14 +1,31 @@
 """
 make the data from the pdb and itp
+
 """
 
 import sys
+from dataclasses import dataclass, field
+
 import pandas as pd
 
 import logger
 import itp_to_df
 import pdb_to_df
+import my_tools
 import parse_charmm_data
+
+
+@dataclass
+class FileConfig:
+    """Set the name of the input files"""
+    pdb_file: str = field(init=False)  # Structure file
+    itp_file: str = 'APT_COR.itp'  # FF of nanoparticle
+    charmm_file: str = 'CHARMM.DAT'  # Radius of the atoms in CAHRMM
+
+
+@dataclass
+class AllConfig(FileConfig):
+    """set all the configs"""
 
 
 class PdbToPqr:
@@ -16,15 +33,24 @@ class PdbToPqr:
     preapre the file with positions, charges and radii
     """
 
+    info_msg: str = 'Message from PdbToPqr:\n'
+    configs: AllConfig
+
     def __init__(self,
-                 log: logger.logging.Logger
+                 pdb_file: str,  # Name of the structure file
+                 log: logger.logging.Logger,
+                 configs: AllConfig = AllConfig()
                  ) -> None:
+
+        configs.pdb_file = pdb_file
+        self.configs = configs
         self.initiate(log)
 
     def initiate(self,
                  log: logger.logging.Logger
                  ) -> pd.DataFrame:
         """get all the infos"""
+        self.check_all_file(log)
         itp: pd.DataFrame = itp_to_df.Itp('APT_COR.itp').atoms
         pdb: pd.DataFrame = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
         charmm: pd.DataFrame = \
@@ -35,6 +61,15 @@ class PdbToPqr:
         pdb_df: pd.DataFrame = self.add_chain_identifier(pdb_with_charge_radii)
         pqr_df: pd.DataFrame = self.mk_pqr_df(pdb_df)
         self.write_pqr(pqr_df)
+
+    def check_all_file(self,
+                       log: logger.logging.Logger
+                       ) -> None:
+        """check all the existence of the all files"""
+        for file in [self.configs.charmm_file,
+                     self.configs.itp_file,
+                     self.configs.pdb_file]:
+            my_tools.check_file_exist(file, log)
 
     def get_charges(self,
                     pdb: pd.DataFrame,
@@ -216,4 +251,4 @@ class PdbToPqr:
 
 
 if __name__ == '__main__':
-    PdbToPqr(log=logger.setup_logger('pdb2pqr.log'))
+    PdbToPqr(pdb_file=sys.argv[1], log=logger.setup_logger('pdb2pqr.log'))
