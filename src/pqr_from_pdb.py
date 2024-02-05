@@ -21,6 +21,7 @@ class FileConfig:
     pdb_file: str = field(init=False)  # Structure file
     itp_file: str = 'APT_COR.itp'  # FF of nanoparticle
     ff_file: str = 'CHARMM.DAT'  # Radius of the atoms in CAHRMM
+    pqr_file: str = field(init=False)  # The output file to write, ext.: pqr
 
 
 @dataclass
@@ -63,7 +64,9 @@ class PdbToPqr:
 
         pdb_df: pd.DataFrame = self.add_chain_identifier(pdb_with_charge_radii)
         pqr_df: pd.DataFrame = self.mk_pqr_df(pdb_df)
-        self.write_pqr(pqr_df)
+
+        self._set_outfile_name()
+        self.write_pqr(self.configs.pqr_file, pqr_df)
 
     def check_all_file(self,
                        log: logger.logging.Logger
@@ -97,6 +100,13 @@ class PdbToPqr:
             self.set_radii_for_cores(pdb_with_charges, force_field, itp)
         return pd.concat([cores_df, aptes_df], axis=0, ignore_index=True)
 
+    def _set_outfile_name(self) -> str:
+        """set the name of the output based on the structure file"""
+        struct_name: str = self.configs.pdb_file.split('.')[0]
+        self.configs.pqr_file = f'{struct_name}.pqr'
+        self.info_msg += \
+            f'\tThe output will be save as: `{self.configs.pqr_file}`\n'
+
     @staticmethod
     def add_chain_identifier(pdb_df: pd.DataFrame
                              ) -> pd.DataFrame:
@@ -126,10 +136,11 @@ class PdbToPqr:
         return df_i
 
     @staticmethod
-    def write_pqr(pqr_df: pd.DataFrame
+    def write_pqr(pqr_file_name: str,
+                  pqr_df: pd.DataFrame
                   ) -> None:
         """writing the pqr to a file"""
-        with open('APT_COR.pqr', 'w', encoding='utf8') as f_w:
+        with open(pqr_file_name, 'w', encoding='utf8') as f_w:
             for _, row in pqr_df.iterrows():
                 line = f"ATOM  {row['atom_id']:>5} " \
                        f"{row['atom_name']:<4} " \
