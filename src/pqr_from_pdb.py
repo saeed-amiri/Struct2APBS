@@ -20,7 +20,7 @@ class FileConfig:
     """Set the name of the input files"""
     pdb_file: str = field(init=False)  # Structure file
     itp_file: str = 'APT_COR.itp'  # FF of nanoparticle
-    charmm_file: str = 'CHARMM.DAT'  # Radius of the atoms in CAHRMM
+    ff_file: str = 'CHARMM.DAT'  # Radius of the atoms in CAHRMM
 
 
 @dataclass
@@ -41,7 +41,6 @@ class PdbToPqr:
                  log: logger.logging.Logger,
                  configs: AllConfig = AllConfig()
                  ) -> None:
-
         configs.pdb_file = pdb_file
         self.configs = configs
         self.initiate(log)
@@ -50,14 +49,18 @@ class PdbToPqr:
                  log: logger.logging.Logger
                  ) -> pd.DataFrame:
         """get all the infos"""
+
         self.check_all_file(log)
-        itp: pd.DataFrame = itp_to_df.Itp('APT_COR.itp').atoms
-        pdb: pd.DataFrame = pdb_to_df.Pdb(sys.argv[1], log).pdb_df
+
+        itp: pd.DataFrame = itp_to_df.Itp(self.configs.itp_file).atoms
+        pdb: pd.DataFrame = pdb_to_df.Pdb(self.configs.pdb_file, log).pdb_df
         charmm: pd.DataFrame = \
-            parse_charmm_data.ParseData('CHARMM.DAT', log).radius_df
+            parse_charmm_data.ParseData(self.configs.ff_file, log).radius_df
+
         pdb_with_charges: pd.DataFrame = self.get_charges(pdb, itp)
         pdb_with_charge_radii: pd.DataFrame = \
             self.set_radii(pdb_with_charges, charmm, itp)
+
         pdb_df: pd.DataFrame = self.add_chain_identifier(pdb_with_charge_radii)
         pqr_df: pd.DataFrame = self.mk_pqr_df(pdb_df)
         self.write_pqr(pqr_df)
@@ -66,7 +69,7 @@ class PdbToPqr:
                        log: logger.logging.Logger
                        ) -> None:
         """check all the existence of the all files"""
-        for file in [self.configs.charmm_file,
+        for file in [self.configs.ff_file,
                      self.configs.itp_file,
                      self.configs.pdb_file]:
             my_tools.check_file_exist(file, log)
