@@ -13,6 +13,7 @@ import itp_to_df
 import pdb_to_df
 import my_tools
 import parse_charmm_data
+from colors_text import TextColor as bcolors
 
 
 @dataclass
@@ -45,6 +46,7 @@ class PdbToPqr:
         configs.pdb_file = pdb_file
         self.configs = configs
         self.initiate(log)
+        self.write_msg(log)
 
     def initiate(self,
                  log: logger.logging.Logger
@@ -265,6 +267,13 @@ class PdbToPqr:
                 break
         return pro_charges, unpro_charges
 
+    def write_msg(self,
+                   log: logger.logging.Logger  # To log
+                   ) -> None:
+        """write and log messages"""
+        print(f'{bcolors.OKCYAN}{PdbToPqr.__name__}:\n'
+              f'\t{self.info_msg}{bcolors.ENDC}')
+        log.info(self.info_msg)
 
 if __name__ == '__main__':
     PdbToPqr(pdb_file=sys.argv[1], log=logger.setup_logger('pdb2pqr.log'))
