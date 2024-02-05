@@ -54,12 +54,12 @@ class PdbToPqr:
 
         itp: pd.DataFrame = itp_to_df.Itp(self.configs.itp_file).atoms
         pdb: pd.DataFrame = pdb_to_df.Pdb(self.configs.pdb_file, log).pdb_df
-        charmm: pd.DataFrame = \
+        force_field: pd.DataFrame = \
             parse_charmm_data.ParseData(self.configs.ff_file, log).radius_df
 
         pdb_with_charges: pd.DataFrame = self.get_charges(pdb, itp)
         pdb_with_charge_radii: pd.DataFrame = \
-            self.set_radii(pdb_with_charges, charmm, itp)
+            self.set_radii(pdb_with_charges, force_field, itp)
 
         pdb_df: pd.DataFrame = self.add_chain_identifier(pdb_with_charge_radii)
         pqr_df: pd.DataFrame = self.mk_pqr_df(pdb_df)
@@ -87,14 +87,14 @@ class PdbToPqr:
 
     def set_radii(self,
                   pdb_with_charges: pd.DataFrame,
-                  charmm: pd.DataFrame,
+                  force_field: pd.DataFrame,
                   itp: pd.DataFrame
                   ) -> pd.DataFrame:
         """set the radii for all"""
         aptes_df: pd.DataFrame = \
-            self.set_radii_for_aptes(pdb_with_charges, charmm)
+            self.set_radii_for_aptes(pdb_with_charges, force_field)
         cores_df: pd.DataFrame = \
-            self.set_radii_for_cores(pdb_with_charges, charmm, itp)
+            self.set_radii_for_cores(pdb_with_charges, force_field, itp)
         return pd.concat([cores_df, aptes_df], axis=0, ignore_index=True)
 
     @staticmethod
@@ -147,10 +147,11 @@ class PdbToPqr:
 
     @staticmethod
     def set_radii_for_aptes(pdb_with_charges: pd.DataFrame,
-                            charmm: pd.DataFrame
+                            force_field: pd.DataFrame
                             ) -> pd.DataFrame:
         """get the radius from the file"""
-        aptes_radii: pd.DataFrame = charmm[charmm['resname'] == 'APT'].copy()
+        aptes_radii: pd.DataFrame = \
+            force_field[force_field['resname'] == 'APT'].copy()
         aptes_df = pd.DataFrame = \
             pdb_with_charges[pdb_with_charges['residue_name'] == 'APT'].copy()
         aptes_df = pd.merge(aptes_df,
@@ -161,11 +162,12 @@ class PdbToPqr:
 
     @staticmethod
     def set_radii_for_cores(pdb_with_charges: pd.DataFrame,
-                            charmm: pd.DataFrame,
+                            force_field: pd.DataFrame,
                             itp: pd.DataFrame
                             ) -> pd.DataFrame:
         """get the radius from the file"""
-        cores_radii: pd.DataFrame = charmm[charmm['resname'] == 'COR'].copy()
+        cores_radii: pd.DataFrame = \
+            force_field[force_field['resname'] == 'COR'].copy()
         cores_df = pd.DataFrame = \
             pdb_with_charges[pdb_with_charges['residue_name'] == 'COR'].copy()
         cores_df['atomtype'] = itp[itp['resname'] == 'COR']['atomtype'].copy()
